@@ -8,6 +8,16 @@ Kube ClusterGuard exposes a small CLI designed for local review and CI.
 clusterguard --version
 ```
 
+## Doctor
+
+```bash
+clusterguard doctor
+clusterguard doctor --manifest examples/risky-deployment.yaml --format json
+```
+
+Checks PyYAML availability, rule registration, and optional manifest scanability.
+Returns exit code `1` if an installation or input check fails.
+
 ## Scan Manifests
 
 ```bash

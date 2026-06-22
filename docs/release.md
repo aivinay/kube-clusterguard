@@ -9,8 +9,10 @@ python -m pip install -e ".[dev]"
 python -m unittest discover -s tests
 ruff check .
 python -m build
+clusterguard doctor --manifest examples/risky-deployment.yaml
 clusterguard scan examples/risky-deployment.yaml --format markdown --fail-on none
 clusterguard scan examples/clean-deployment.yaml --fail-on low
+docker build -t kube-clusterguard:dev .
 ```
 
 ## Repository Hygiene
@@ -20,3 +22,5 @@ clusterguard scan examples/clean-deployment.yaml --fail-on low
 - `docs/rules.md` matches the rule catalog.
 - No secrets, local paths, or private environment values are present.
 - CI is passing on the supported Python versions.
+- The release-artifact workflow builds and validates `dist/*` on tag pushes and
+  manual workflow runs.

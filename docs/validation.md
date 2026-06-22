@@ -9,6 +9,8 @@ reproduced without cluster access.
   directory scanning, source attribution, multi-document YAML loading, SARIF
   report generation, rule catalog rendering, config generation, and policy
   filtering.
+- CLI smoke checks cover version output, diagnostics, rule listing, and manifest
+  scanning.
 - Ruff linting is clean.
 - Source distribution and wheel builds complete successfully.
 
@@ -22,6 +24,7 @@ missing probes.
 Run:
 
 ```bash
+clusterguard doctor --manifest examples/risky-deployment.yaml
 clusterguard scan examples/risky-deployment.yaml --format markdown
 clusterguard scan examples/clean-deployment.yaml --fail-on low
 clusterguard rules --format markdown

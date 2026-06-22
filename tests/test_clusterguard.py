@@ -228,6 +228,25 @@ suppressions:
     def test_cli_rules_command_runs(self) -> None:
         self.assertEqual(run(["rules", "--format", "json"]), 0)
 
+    def test_cli_doctor_command_runs_with_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = Path(tmpdir) / "service.yaml"
+            manifest.write_text(
+                """
+apiVersion: v1
+kind: Service
+metadata:
+  name: public
+spec:
+  type: NodePort
+""",
+                encoding="utf-8",
+            )
+
+            status = run(["doctor", "--manifest", str(manifest), "--format", "json"])
+
+        self.assertEqual(status, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

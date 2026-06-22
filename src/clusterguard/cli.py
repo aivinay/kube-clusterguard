@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from . import __version__
+from .doctor import diagnostics_to_json, diagnostics_to_markdown, run_diagnostics
 from .policy import apply_policy, load_policy, write_default_policy
 from .registry import RULES
 from .reports import (
@@ -48,6 +49,17 @@ def run(argv: list[str] | None = None) -> int:
     rules = subparsers.add_parser("rules", help="List built-in guardrail rules.")
     rules.add_argument("--format", choices=["json", "markdown"], default="markdown")
 
+    doctor = subparsers.add_parser(
+        "doctor",
+        help="Check local installation and optional manifests.",
+    )
+    doctor.add_argument(
+        "--manifest",
+        type=Path,
+        help="Optional manifest file or directory to scan.",
+    )
+    doctor.add_argument("--format", choices=["json", "markdown"], default="markdown")
+
     config = subparsers.add_parser("config", help="Configuration helpers.")
     config_subparsers = config.add_subparsers(dest="config_command", required=True)
     init = config_subparsers.add_parser("init", help="Write a starter policy file.")
@@ -70,6 +82,14 @@ def run(argv: list[str] | None = None) -> int:
             print(rules_to_json(RULES))
         else:
             print(rules_to_markdown(RULES), end="")
+    elif args.command == "doctor":
+        checks = run_diagnostics(args.manifest)
+        if args.format == "json":
+            print(diagnostics_to_json(checks))
+        else:
+            print(diagnostics_to_markdown(checks), end="")
+        if not all(check.passed for check in checks):
+            return 1
     elif args.command == "config" and args.config_command == "init":
         write_default_policy(args.output, force=args.force)
     return 0
