@@ -10,12 +10,18 @@ class Finding:
     resource: str
     message: str
     remediation: str
+    category: str = "general"
+    source: str | None = None
 
     def to_dict(self) -> dict[str, str]:
-        return {
+        payload = {
             "rule_id": self.rule_id,
             "severity": self.severity,
+            "category": self.category,
             "resource": self.resource,
             "message": self.message,
             "remediation": self.remediation,
         }
+        if self.source:
+            payload["source"] = self.source
+        return payload

@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a reproducible problem in Kube ClusterGuard.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: manifest
+    attributes:
+      label: Minimal manifest
+      description: Paste the smallest manifest that reproduces the problem. Remove secrets first.
+      render: yaml
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: What command did you run?
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: clusterguard 0.1.0

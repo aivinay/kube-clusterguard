@@ -1,0 +1,7 @@
+disabled_rules: []
+severity_overrides:
+  CG008: medium
+suppressions:
+  - rule_id: CG003
+    resource: Service/ml/gpu-trainer
+    reason: "Documented temporary exposure for integration testing."
