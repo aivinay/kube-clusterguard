@@ -96,6 +96,71 @@ RULES: tuple[RuleSpec, ...] = (
             "Add probes for long-running services so Kubernetes can route and recover safely."
         ),
     ),
+    RuleSpec(
+        rule_id="CG009",
+        default_severity="medium",
+        category="gpu-governance",
+        title="GPU workload without node scheduling constraints",
+        description=(
+            "GPU workload does not set a nodeSelector, node affinity, or tolerations to target "
+            "GPU nodes."
+        ),
+        remediation=(
+            "Add a nodeSelector, node affinity, or tolerations so GPU pods schedule onto "
+            "GPU-capable, tainted nodes."
+        ),
+    ),
+    RuleSpec(
+        rule_id="CG010",
+        default_severity="low",
+        category="reliability",
+        title="GPU workload without dedicated shared memory",
+        description=(
+            "GPU workload does not define an in-memory emptyDir volume for the shared-memory "
+            "device used by ML data loaders."
+        ),
+        remediation=(
+            "Mount an emptyDir volume with medium set to Memory at /dev/shm for multi-worker "
+            "data loaders."
+        ),
+    ),
+    RuleSpec(
+        rule_id="CG011",
+        default_severity="low",
+        category="resource-governance",
+        title="GPU container without ephemeral-storage limits",
+        description=(
+            "GPU container does not set ephemeral-storage requests and limits for datasets and "
+            "checkpoints written to node storage."
+        ),
+        remediation=(
+            "Set ephemeral-storage requests and limits to bound dataset and checkpoint usage."
+        ),
+    ),
+    RuleSpec(
+        rule_id="CG012",
+        default_severity="medium",
+        category="reliability",
+        title="GPU job without completion safeguards",
+        description=(
+            "GPU Job or CronJob does not set activeDeadlineSeconds or an explicit backoffLimit."
+        ),
+        remediation=(
+            "Set activeDeadlineSeconds and backoffLimit so failed GPU jobs stop instead of "
+            "consuming accelerators on repeated retries."
+        ),
+    ),
+    RuleSpec(
+        rule_id="CG013",
+        default_severity="medium",
+        category="gpu-governance",
+        title="Mismatched GPU request and limit",
+        description=(
+            "Container sets different GPU request and limit quantities, which Kubernetes rejects "
+            "for extended resources."
+        ),
+        remediation="Set equal GPU requests and limits for each accelerator resource.",
+    ),
 )
 
 RULES_BY_ID = {rule.rule_id: rule for rule in RULES}

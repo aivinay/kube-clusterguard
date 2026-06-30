@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Kube ClusterGuard: An accelerator-aware static scanner for Kubernetes AI/ML compute manifests"
+version: "0.1.0"
+date-released: 2026-06-30
+type: software
+license: MIT
+abstract: >-
+  Kube ClusterGuard is an open-source Python tool for statically scanning
+  Kubernetes JSON and YAML manifests for security, cost, reliability, and
+  accelerator-governance findings relevant to AI/ML compute clusters.
+authors:
+  - given-names: Vinay
+    family-names: Gupta
+    affiliation: Independent Researcher
+    orcid: "https://orcid.org/0009-0000-0749-6609"
+repository-code: "https://github.com/aivinay/kube-clusterguard"
+url: "https://github.com/aivinay/kube-clusterguard"
+keywords:
+  - Kubernetes
+  - machine-learning infrastructure
+  - GPU governance
+  - cloud security
+  - static analysis
+  - policy as code
+  - reliability

@@ -26,6 +26,8 @@ def scan_resource(resource: Resource) -> list[Finding]:
     pod_spec = _pod_spec_for(resource)
     if pod_spec:
         findings.extend(_scan_pod_spec(pod_spec, name))
+        if kind in {"Job", "CronJob"}:
+            findings.extend(_scan_job(resource, kind, pod_spec, name))
 
     return findings
 
@@ -99,7 +101,40 @@ def _scan_pod_spec(pod_spec: Resource, resource_name: str) -> list[Finding]:
             )
         )
 
-    for container in _containers(pod_spec):
+    containers = _containers(pod_spec)
+    gpu_containers = [container for container in containers if _container_requests_gpu(container)]
+
+    if gpu_containers and not _has_node_targeting(pod_spec):
+        findings.append(
+            Finding(
+                rule_id="CG009",
+                severity="medium",
+                resource=resource_name,
+                message="GPU workload has no nodeSelector, node affinity, or tolerations.",
+                remediation=(
+                    "Add a nodeSelector, node affinity, or tolerations so GPU pods schedule onto "
+                    "GPU-capable, tainted nodes."
+                ),
+                category="gpu-governance",
+            )
+        )
+
+    if gpu_containers and not _has_shared_memory_volume(pod_spec):
+        findings.append(
+            Finding(
+                rule_id="CG010",
+                severity="low",
+                resource=resource_name,
+                message="GPU workload has no in-memory shared-memory volume for data loaders.",
+                remediation=(
+                    "Mount an emptyDir volume with medium set to Memory at /dev/shm for "
+                    "multi-worker data loaders."
+                ),
+                category="reliability",
+            )
+        )
+
+    for container in containers:
         container_name = str(container.get("name", "unnamed"))
         image = str(container.get("image", ""))
         security_context = _mapping(container.get("securityContext"))
@@ -197,6 +232,39 @@ def _scan_pod_spec(pod_spec: Resource, resource_name: str) -> list[Finding]:
                 )
             )
 
+        if _container_requests_gpu(container):
+            if "ephemeral-storage" not in requests or "ephemeral-storage" not in limits:
+                findings.append(
+                    Finding(
+                        rule_id="CG011",
+                        severity="low",
+                        resource=f"{resource_name}/{container_name}",
+                        message="GPU container does not set ephemeral-storage requests and limits.",
+                        remediation=(
+                            "Set ephemeral-storage requests and limits to bound dataset and "
+                            "checkpoint usage."
+                        ),
+                        category="resource-governance",
+                    )
+                )
+
+            for gpu_key in _gpu_keys(limits):
+                if gpu_key in requests and str(requests[gpu_key]) != str(limits[gpu_key]):
+                    findings.append(
+                        Finding(
+                            rule_id="CG013",
+                            severity="medium",
+                            resource=f"{resource_name}/{container_name}",
+                            message=(
+                                f"GPU request and limit differ for {gpu_key} "
+                                f"({requests[gpu_key]} vs {limits[gpu_key]})."
+                            ),
+                            remediation="Set equal GPU requests and limits for each accelerator.",
+                            category="gpu-governance",
+                        )
+                    )
+                    break
+
         if "readinessProbe" not in container and "livenessProbe" not in container:
             findings.append(
                 Finding(
@@ -239,6 +307,68 @@ def _containers(pod_spec: Resource) -> list[Resource]:
     containers = list(pod_spec.get("containers", []))
     init_containers = list(pod_spec.get("initContainers", []))
     return [_mapping(container) for container in containers + init_containers]
+
+
+_GPU_RESOURCE_HINTS = ("nvidia.com/", "amd.com/", "gpu.intel.com/", "habana.ai/")
+
+
+def _gpu_keys(quantities: Resource) -> list[str]:
+    keys: list[str] = []
+    for key in quantities:
+        text = str(key)
+        if "gpu" in text.lower() or text.startswith(_GPU_RESOURCE_HINTS):
+            keys.append(text)
+    return keys
+
+
+def _container_requests_gpu(container: Resource) -> bool:
+    resources = _mapping(container.get("resources"))
+    return bool(
+        _gpu_keys(_mapping(resources.get("limits")))
+        or _gpu_keys(_mapping(resources.get("requests")))
+    )
+
+
+def _has_node_targeting(pod_spec: Resource) -> bool:
+    if pod_spec.get("nodeSelector") or pod_spec.get("tolerations"):
+        return True
+    return bool(_mapping(pod_spec.get("affinity")).get("nodeAffinity"))
+
+
+def _has_shared_memory_volume(pod_spec: Resource) -> bool:
+    for volume in pod_spec.get("volumes", []) or []:
+        empty_dir = _mapping(_mapping(volume).get("emptyDir"))
+        if str(empty_dir.get("medium", "")).lower() == "memory":
+            return True
+    return False
+
+
+def _scan_job(
+    resource: Resource, kind: str, pod_spec: Resource, resource_name: str
+) -> list[Finding]:
+    if not any(_container_requests_gpu(container) for container in _containers(pod_spec)):
+        return []
+
+    job_spec = _mapping(resource.get("spec"))
+    if kind == "CronJob":
+        job_spec = _mapping(_mapping(job_spec.get("jobTemplate")).get("spec"))
+
+    if "activeDeadlineSeconds" in job_spec or "backoffLimit" in job_spec:
+        return []
+
+    return [
+        Finding(
+            rule_id="CG012",
+            severity="medium",
+            resource=resource_name,
+            message="GPU job sets neither activeDeadlineSeconds nor backoffLimit.",
+            remediation=(
+                "Set activeDeadlineSeconds and backoffLimit so failed GPU jobs stop instead of "
+                "consuming accelerators on repeated retries."
+            ),
+            category="reliability",
+        )
+    ]
 
 
 def _resource_name(resource: Resource) -> str:

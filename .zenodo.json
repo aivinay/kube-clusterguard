@@ -1,0 +1,26 @@
+{
+  "creators": [
+    {
+      "name": "Gupta, Vinay",
+      "orcid": "0009-0000-0749-6609",
+      "affiliation": "Independent Researcher",
+      "type": "ProjectLeader"
+    }
+  ],
+  "title": "Kube ClusterGuard: An accelerator-aware static scanner for Kubernetes AI/ML compute manifests",
+  "version": "0.1.0",
+  "access_right": "open",
+  "license": "mit",
+  "upload_type": "software",
+  "language": "eng",
+  "keywords": [
+    "Kubernetes",
+    "machine-learning infrastructure",
+    "GPU governance",
+    "cloud security",
+    "static analysis",
+    "policy as code",
+    "reliability"
+  ],
+  "description": "Kube ClusterGuard is an open-source Python tool for statically scanning Kubernetes JSON and YAML manifests for security, cost, reliability, and accelerator-governance findings relevant to AI/ML compute clusters."
+}

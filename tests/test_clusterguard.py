@@ -76,6 +76,165 @@ class ClusterGuardTests(unittest.TestCase):
 
         self.assertEqual(scan_resource(pod), [])
 
+    def test_flags_gpu_scheduling_and_resource_risks(self) -> None:
+        deployment = {
+            "kind": "Deployment",
+            "metadata": {"name": "trainer", "namespace": "ml"},
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "trainer",
+                                "image": "trainer:1.0.0",
+                                "securityContext": {"runAsNonRoot": True},
+                                "resources": {
+                                    "requests": {
+                                        "cpu": "4",
+                                        "memory": "16Gi",
+                                        "nvidia.com/gpu": "1",
+                                    },
+                                    "limits": {
+                                        "cpu": "8",
+                                        "memory": "32Gi",
+                                        "nvidia.com/gpu": "1",
+                                    },
+                                },
+                                "readinessProbe": {"exec": {"command": ["true"]}},
+                            }
+                        ]
+                    }
+                }
+            },
+        }
+
+        rule_ids = [finding.rule_id for finding in scan_resource(deployment)]
+
+        self.assertIn("CG009", rule_ids)
+        self.assertIn("CG010", rule_ids)
+        self.assertIn("CG011", rule_ids)
+        self.assertNotIn("CG007", rule_ids)
+        self.assertNotIn("CG013", rule_ids)
+        self.assertNotIn("CG001", rule_ids)
+
+    def test_flags_gpu_request_limit_mismatch(self) -> None:
+        pod = {
+            "kind": "Pod",
+            "metadata": {"name": "mismatch", "namespace": "ml"},
+            "spec": {
+                "nodeSelector": {"accelerator": "nvidia"},
+                "volumes": [{"name": "dshm", "emptyDir": {"medium": "Memory"}}],
+                "containers": [
+                    {
+                        "name": "main",
+                        "image": "trainer:1.0.0",
+                        "securityContext": {"runAsNonRoot": True},
+                        "resources": {
+                            "requests": {
+                                "cpu": "1",
+                                "memory": "1Gi",
+                                "ephemeral-storage": "10Gi",
+                                "nvidia.com/gpu": "1",
+                            },
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "1Gi",
+                                "ephemeral-storage": "10Gi",
+                                "nvidia.com/gpu": "2",
+                            },
+                        },
+                        "readinessProbe": {"exec": {"command": ["true"]}},
+                    }
+                ],
+            },
+        }
+
+        rule_ids = [finding.rule_id for finding in scan_resource(pod)]
+
+        self.assertIn("CG013", rule_ids)
+        self.assertNotIn("CG009", rule_ids)
+        self.assertNotIn("CG010", rule_ids)
+        self.assertNotIn("CG011", rule_ids)
+
+    def test_flags_unbounded_gpu_job(self) -> None:
+        job = {
+            "kind": "Job",
+            "metadata": {"name": "train", "namespace": "ml"},
+            "spec": {
+                "template": {
+                    "spec": {
+                        "nodeSelector": {"accelerator": "nvidia"},
+                        "volumes": [{"name": "dshm", "emptyDir": {"medium": "Memory"}}],
+                        "containers": [
+                            {
+                                "name": "main",
+                                "image": "trainer:1.0.0",
+                                "securityContext": {"runAsNonRoot": True},
+                                "resources": {
+                                    "requests": {
+                                        "cpu": "1",
+                                        "memory": "1Gi",
+                                        "ephemeral-storage": "10Gi",
+                                        "nvidia.com/gpu": "1",
+                                    },
+                                    "limits": {
+                                        "cpu": "1",
+                                        "memory": "1Gi",
+                                        "ephemeral-storage": "10Gi",
+                                        "nvidia.com/gpu": "1",
+                                    },
+                                },
+                                "readinessProbe": {"exec": {"command": ["true"]}},
+                            }
+                        ],
+                    }
+                }
+            },
+        }
+
+        self.assertIn("CG012", [finding.rule_id for finding in scan_resource(job)])
+
+        job["spec"]["backoffLimit"] = 4
+        self.assertNotIn("CG012", [finding.rule_id for finding in scan_resource(job)])
+
+    def test_clean_gpu_workload_has_no_findings(self) -> None:
+        pod = {
+            "kind": "Pod",
+            "metadata": {"name": "ok", "namespace": "ml"},
+            "spec": {
+                "nodeSelector": {"accelerator": "nvidia"},
+                "tolerations": [{"key": "nvidia.com/gpu", "operator": "Exists"}],
+                "volumes": [{"name": "dshm", "emptyDir": {"medium": "Memory"}}],
+                "containers": [
+                    {
+                        "name": "main",
+                        "image": "trainer:1.2.3",
+                        "securityContext": {
+                            "runAsNonRoot": True,
+                            "allowPrivilegeEscalation": False,
+                        },
+                        "resources": {
+                            "requests": {
+                                "cpu": "4",
+                                "memory": "16Gi",
+                                "ephemeral-storage": "50Gi",
+                                "nvidia.com/gpu": "1",
+                            },
+                            "limits": {
+                                "cpu": "8",
+                                "memory": "32Gi",
+                                "ephemeral-storage": "50Gi",
+                                "nvidia.com/gpu": "1",
+                            },
+                        },
+                        "readinessProbe": {"exec": {"command": ["true"]}},
+                    }
+                ],
+            },
+        }
+
+        self.assertEqual(scan_resource(pod), [])
+
     def test_loads_multi_document_yaml_and_scans_all_resources(self) -> None:
         manifest = """
 apiVersion: v1
