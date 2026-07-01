@@ -6,7 +6,7 @@ from .registry import RULES, RuleSpec
 from .rules import scan_resource, scan_resources
 from .scanner import collect_manifest_paths, scan_paths
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "Finding",

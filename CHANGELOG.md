@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-07-01
+
+- Hardened GitHub Actions permissions and Docker runtime user defaults.
+- Added validation for policy severity overrides to avoid silently weakening
+  CI gates.
+
 ## 0.1.0 - 2026-06-22
 
 - Added JSON and YAML manifest loading, including Kubernetes `List` resources
