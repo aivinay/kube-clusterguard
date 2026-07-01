@@ -34,6 +34,8 @@ suppressions:
   #   reason: "Documented temporary exposure."
 """
 
+_VALID_SEVERITIES = {"low", "medium", "high", "critical"}
+
 
 def load_policy(path: Path | None) -> GuardrailPolicy:
     if path is None:
@@ -48,10 +50,7 @@ def load_policy(path: Path | None) -> GuardrailPolicy:
 
     return GuardrailPolicy(
         disabled_rules=set(_string_list(payload.get("disabled_rules", []))),
-        severity_overrides={
-            str(rule_id): str(severity)
-            for rule_id, severity in dict(payload.get("severity_overrides", {})).items()
-        },
+        severity_overrides=_severity_overrides(payload.get("severity_overrides", {})),
         suppressions=[
             Suppression(
                 rule_id=str(suppression.get("rule_id", "*")),
@@ -93,6 +92,22 @@ def _string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         raise ValueError("Expected a list of strings.")
     return [str(item) for item in value]
+
+
+def _severity_overrides(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise ValueError("severity_overrides must be a mapping.")
+
+    overrides: dict[str, str] = {}
+    for rule_id, severity in value.items():
+        normalized = str(severity).lower()
+        if normalized not in _VALID_SEVERITIES:
+            raise ValueError(
+                f"Invalid severity override for {rule_id}: {severity}. "
+                f"Expected one of {', '.join(sorted(_VALID_SEVERITIES))}."
+            )
+        overrides[str(rule_id)] = normalized
+    return overrides
 
 
 def _dict_list(value: Any) -> list[dict[str, Any]]:

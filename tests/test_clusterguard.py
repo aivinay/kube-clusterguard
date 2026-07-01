@@ -375,6 +375,20 @@ suppressions:
         self.assertEqual(findings[-1].rule_id, "CG008")
         self.assertEqual(findings[-1].severity, "medium")
 
+    def test_policy_rejects_invalid_severity_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            policy_path = Path(tmpdir) / "policy.yaml"
+            policy_path.write_text(
+                """
+severity_overrides:
+  CG008: typo
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "Invalid severity override"):
+                load_policy(policy_path)
+
     def test_cli_config_init_writes_starter_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / "policy.yaml"
